@@ -1,0 +1,30 @@
+syntax = "proto3";
+package todo;
+
+// Specify the Go import path and package for generated files
+option go_package = "hearx/proto;todo";
+
+service TodoService {
+  // Adds a new task
+  rpc AddTask(AddTaskRequest)       returns (AddTaskResponse);
+  // Marks a task as completed
+  rpc CompleteTask(CompleteTaskRequest) returns (CompleteTaskResponse);
+  // Lists all tasks
+  rpc ListTasks(ListTasksRequest)   returns (ListTasksResponse);
+}
+
+message Task {
+  int64  id          = 1;
+  string title       = 2;
+  string description = 3;
+  bool   completed   = 4;
+}
+
+message AddTaskRequest     { Task task = 1; }
+message AddTaskResponse    { Task task = 1; }
+
+message CompleteTaskRequest  { int64 id = 1; }
+message CompleteTaskResponse { Task task = 1; }
+
+message ListTasksRequest  {}
+message ListTasksResponse { repeated Task tasks = 1; }
