@@ -1,12 +1,15 @@
-version: '3'
+version: '3.8'
 services:
   mysql:
     image: mysql:latest
-    environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_USER: ${MYSQL_USER}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u${MYSQL_USER} -p${MYSQL_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 5s
     ports:
       - "3306:3306"
     volumes:
@@ -14,21 +17,20 @@ services:
     networks:
       - backend_network
 
-  # golang_backend:
-  #   build: .
-  #   ports:
-  #     - "8000:8000"
-  #   depends_on:
-  #     - mysql
-  #   environment:
-  #     MYSQL_HOST: mysql
-  #     MYSQL_USER: user
-  #     MYSQL_PASSWORD: userpassword
-  #     MYSQL_DATABASE: project_db
-  #   volumes:
-  #     - ./migrations:/migrations
-  #   networks:
-  #     - backend_network
+  todo:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "50051:50051"   # gRPC
+      - "8000:8000"     # HTTP if you enable it later
+    networks:
+      - backend_network
 
 networks:
   backend_network:
