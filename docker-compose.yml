@@ -1,0 +1,35 @@
+version: '3'
+services:
+  mysql:
+    image: mysql:latest
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./schema:/docker-entrypoint-initdb.d:ro
+    networks:
+      - backend_network
+
+  # golang_backend:
+  #   build: .
+  #   ports:
+  #     - "8000:8000"
+  #   depends_on:
+  #     - mysql
+  #   environment:
+  #     MYSQL_HOST: mysql
+  #     MYSQL_USER: user
+  #     MYSQL_PASSWORD: userpassword
+  #     MYSQL_DATABASE: project_db
+  #   volumes:
+  #     - ./migrations:/migrations
+  #   networks:
+  #     - backend_network
+
+networks:
+  backend_network:
+    driver: bridge
