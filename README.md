@@ -1,77 +1,77 @@
-## 1. Install Docker
+# README
 
-Make sure Docker is installed on your system. Follow the installation instructions for your operating system:
+## Overview
+- A Go-based backend providing a TaskService over gRPC, backed by MySQL.
+- `Server`: exposes TodoService RPCs (AddTask, ListTasks, CompleteTask) on port 50051.
+- `Client`: a Cobra-powered CLI that can start the server and invoke those RPCs.
+- `Auth`: simple Bearer-token interceptor; set AUTH_TOKEN in .env and pass --token on the client.
 
-- [Install Docker](https://docs.docker.com/get-docker/)
-- [Install Docker Compose](https://docs.docker.com/compose/install/)
 
-## **How the Application Works**
-
-### **Overview**
-This application is a Go-based backend that interacts with a MySQL database. It is designed with a **multi-service architecture** that includes:
-1. A **ProjectService** to manage project data.
-2. A **TaskService** to handle tasks within those projects.
-
-The application uses **Docker** for containerization, **MySQL** as the database, and **Alpine** images to ensure a lightweight and efficient deployment. The Go application runs on port **8000**.
-
-### **Architecture**
-1. **Backend**:
-   - Built using **Go** (version 1.23) and follows a **layered architecture**.
-   - The **ProjectService** handles business logic for projects, including creating, reading, updating, and deleting projects.
-   - The **TaskService** handles similar logic for tasks within those projects.
-   - The services communicate with the database using **MySQL** and GORM ORM for database operations.
-
-2. **Database**:
-   - **MySQL** is used for storing project and task data.
-   - The **MySQL container** is managed by Docker and configured through environment variables in the `.env` file.
-   - To add new tables or remove tables, ensure you add schema's for these on the `./schema` folder.
-   - To start of the MySQL service seperately"
-   ```bash
-      docker compose up MySQL
-   ```
-   - To exec into the MySQL containers
-   ```bash
-         # Open a shell inside the container
-      docker exec -it hearx-mysql-1 bash  # or 'sh' if bash not available
-
-      # From within container, launch MySQL client
-      mysql -u user -puserpassword project_db
-   ```
-   - Cleaning up the containers
-   ```bash
-      # Stop containers (keep data)
-      docker compose down 
-
-      # Stop & remove containers + volumes:
-      docker compose down -v
+## Prerequisites
+- **Go 1.23+**  
+- **Docker** & **Docker Compose**  
+  - [Install Docker](https://docs.docker.com/get-docker/)  
+  - [Install Docker Compose](https://docs.docker.com/compose/install/)  
+- **Ginkgo** & **mockgen** (for unit tests) in your `$PATH`  
+  ```bash
+   go install github.com/onsi/ginkgo/ginkgo@latest
+   go install github.com/golang/mock/mockgen@latest
+   export PATH="$(go env GOPATH)/bin:$PATH"
    ```
 
-3. **Containerization**:
-   - The **Dockerfile** defines a **multi-stage build**:
-     - **Stage 1**: Builds the Go application.
-     - **Stage 2**: Uses a minimal `Alpine` image to run the Go application in a production-ready environment, exposing it on port `8000`.
+## Architecture
+   ### Backend
+   - Language: Go 1.23
+   - Dependency injection: Uber FX
+   - Logging: Zap
 
-4. **Migration**:
-   - **Database migrations** can be handled by the Go application or manually using tools like `golang-migrate`. Migrations are applied on startup via the `entrypoint.sh` script before the Go service is started.
+   ### Repository layer:
+   - raw database/sql + github.com/go-sql-driver/mysql
 
-### **Running the Application**
+   ### Service layer: 
+   - TaskService interface → business logic
 
-1. **Docker Setup**:
-   - The application uses **Docker Compose** to spin up both the backend service and MySQL container, ensuring easy management of dependencies.
-   - **Build and start the services** with:
+   ### Transport: 
+   - gRPC server with a unary interceptor for token auth
 
-     ```bash
-     docker-compose up --build
-     ```
+   ### Database
+   - MySQL containerized via Docker Compose
 
-   - To set the env:
+   ### Schema 
+   - files in ./schema (e.g. 01_create_tasks_table.sql)
+
+   - Connection configured via `.env`
+
+## Configuration
+   - An example of a configuration file is
+   ```bash
+      # MySQL
+      MYSQL_HOST=mysql
+      MYSQL_PORT=3306
+      MYSQL_USER=user
+      MYSQL_PASSWORD=userpassword
+      MYSQL_DATABASE=project_db
+
+      # gRPC auth
+      AUTH_TOKEN=your-secret-token
+   ```
+
+## Running the application
+   
+   ### Bring up everything
+   ```bash
+      docker compose up
+   ```
+
+   ### Set the envionment variables
    ```bash
       set -o allexport
       source .env
       set +o allexport
    ```
 
-   - To run the server:
+   ### Starting the Server
+   - Once MySQL is healthy, launch the gRPC server:
    ```bash
       docker compose exec todo todo server \
       --grpc-port 50051 \
@@ -81,45 +81,50 @@ The application uses **Docker** for containerization, **MySQL** as the database,
       --mysql-pass "$MYSQL_PASSWORD" \
       --mysql-db   "$MYSQL_DATABASE"
    ```
+   - This will block and run the TaskService until you Ctrl+C.
 
-   - To run exec:
+   ### Using the CLI Client
+   - In a separate shell (after the server is running), you can manage tasks:
    ```bash
-      docker compose exec todo todo client add --title "Buy eggs" --desc "Cart" --token=test_auth
+      # Add a task
+      docker compose exec todo todo client add \
+      --host localhost --port 50051 \
+      --token "$AUTH_TOKEN" \
+      --title "Buy eggs" --desc "A dozen"
 
       # List all tasks
-      docker compose exec todo todo client get --token=test_auth
+      docker compose exec todo todo client get \
+      --host localhost --port 50051 \
+      --token "$AUTH_TOKEN"
 
       # Mark task #1 complete
-      docker compose exec todo todo client complete --id 1 --token=test_auth
+      docker compose exec todo todo client complete \
+      --host localhost --port 50051 \
+      --token "$AUTH_TOKEN" \
+      --id 1
    ```
 
-2. **Endpoints**:
-   - The application exposes several API endpoints to manage projects and tasks:
-     - `GET /projects`: Retrieves all projects.
-     - `POST /projects`: Creates a new project.
-     - `GET /projects/{id}`: Retrieves a specific project by ID.
-     - `PUT /projects/{id}`: Updates a specific project.
-     - `DELETE /projects/{id}`: Deletes a specific project.
-     - Similar endpoints exist for tasks.
-
-3. **Testing**:
-   - Unit tests are written using ginkgo. Mocks are generated using mockgen and to regenerate them run:
+   ### Running Unit Tests
+   - Mocks live under `pkg/repository/mock_repository` and `pkg/service/mock_service`. Regenerate them if you change interfaces.
    ```bash
+      go generate ./pkg/repository
+      go generate ./pkg/service
    ```
-   - To run the unit tests
-   ````bash
+   - Run the ginkgo
+   ```bash
       ginkgo -r pkg/service
       ginkgo -r pkg/transport/grpc
    ```
 
+   ### Inspecting MySQL
    ```bash
-   docker exec -it mysql_container mysql -u user -p
+      docker exec -it hearx-mysql-1 bash
+      mysql -u "$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"
    ```
 
-4. **Stopping the Application**:
-   - To stop the containers, run:
-
-     ```bash
-     docker-compose down
-     ```
-
+   ### Cleanup
+   ```bash
+      docker compose down
+   ```
+   - `down` stops containers (data persists)
+   - `down -v` also removes volumes (data wiped)
