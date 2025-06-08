@@ -35,7 +35,6 @@ func UnaryServerInterceptor() grpc.UnaryServerInterceptor {
 		if token != expected {
 			return nil, status.Error(codes.Unauthenticated, "invalid auth token")
 		}
-		// ok!
 		return handler(ctx, req)
 	}
 }
@@ -56,13 +55,11 @@ func (c StaticTokenCreds) GetRequestMetadata(ctx context.Context, _ ...string) (
 }
 
 // RequireTransportSecurity controls whether this credential requires TLS.
-// Return false if you’re on plaintext; for production you’d typically return true.
 func (c StaticTokenCreds) RequireTransportSecurity() bool {
 	return false
 }
 
 // AsPerRPCCreds wraps StaticTokenCreds as oauth.TokenSource so you can also do:
-// grpc.WithPerRPCCredentials(oauth.TokenSource{TokenSource: myStaticSource})
 func TokenSource(token string) credentials.PerRPCCredentials {
 	return StaticTokenCreds{Token: token}
 }

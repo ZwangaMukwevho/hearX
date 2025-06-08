@@ -43,31 +43,36 @@
    - Connection configured via `.env`
 
 ## Configuration
+   - Create a `.env` configuration file.
+   ```bash
+      touch .env
+   ```
    - An example of a configuration file is
    ```bash
-      # MySQL
+      # .env
+      MYSQL_ROOT_PASSWORD=rootpassword
       MYSQL_HOST=mysql
       MYSQL_PORT=3306
       MYSQL_USER=user
       MYSQL_PASSWORD=userpassword
       MYSQL_DATABASE=project_db
-
-      # gRPC auth
-      AUTH_TOKEN=your-secret-token
+      GRPC_PORT=50051
+      HTTP_PORT=8000
+      AUTH_TOKEN=test_auth
    ```
 
 ## Running the application
    
-   ### Bring up everything
-   ```bash
-      docker compose up
-   ```
-
    ### Set the envionment variables
    ```bash
       set -o allexport
       source .env
       set +o allexport
+   ```
+
+   ### Bring up everything
+   ```bash
+      docker compose up
    ```
 
    ### Starting the Server
@@ -110,7 +115,7 @@
       go generate ./pkg/repository
       go generate ./pkg/service
    ```
-   - Run the ginkgo
+   - Run the ginkgo tests
    ```bash
       ginkgo -r pkg/service
       ginkgo -r pkg/transport/grpc
@@ -119,6 +124,9 @@
    ### Inspecting MySQL
    ```bash
       docker exec -it hearx-mysql-1 bash
+   ```
+
+   ```bash
       mysql -u "$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"
    ```
 
