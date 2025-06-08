@@ -1,4 +1,5 @@
-// pkg/service/task_service.go
+//go:generate mockgen -source=task_service.go -destination=mock_service/mock_task_service.go -package=mock_service
+
 package service
 
 import (

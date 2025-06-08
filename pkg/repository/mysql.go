@@ -1,4 +1,5 @@
-// pkg/repository/mysql.go
+//go:generate mockgen -source=mysql.go -destination=mock_repository/mock_task_repository.go -package=mock_repository
+
 package repository
 
 import (

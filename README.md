@@ -74,26 +74,15 @@ The application uses **Docker** for containerization, **MySQL** as the database,
      - Similar endpoints exist for tasks.
 
 3. **Testing**:
-   - You can test the application using tools like `Postman` or `curl` by making HTTP requests to `http://localhost:8000` for interacting with the project and task management API.
-      - Example
-      ```bash
-         curl -X POST http://localhost:8000/projects \
-         -H "Content-Type: application/json" \
-         -d '{
-         "title": "New Project",
-         "description": "This is a description for the new project",
-         "deadline": "2025-12-31"
-         }'
+   - Unit tests are written using ginkgo. Mocks are generated using mockgen and to regenerate them run:
+   ```bash
+   ```
+   - To run the unit tests
+   ````bash
+      ginkgo -r pkg/service
+      ginkgo -r pkg/transport/grpc
+   ```
 
-         {
-            "ID": 1,
-            "Title": "New Project",
-            "Description": "This is a description for the new project",
-            "Deadline": "2025-12-31"
-         }
-      ```
-   - To access the swagger page with the endpoints used on the app simply visit `http://localhost:8000/swagger/index.html`.
-   - Accessing the database
    ```bash
    docker exec -it mysql_container mysql -u user -p
    ```
