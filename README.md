@@ -84,13 +84,13 @@ The application uses **Docker** for containerization, **MySQL** as the database,
 
    - To run exec:
    ```bash
-      docker compose exec todo todo client add --title "Buy eggs" --desc "Cart"
+      docker compose exec todo todo client add --title "Buy eggs" --desc "Cart" --token=test_auth
 
       # List all tasks
-      docker compose exec todo todo client get
+      docker compose exec todo todo client get --token=test_auth
 
       # Mark task #1 complete
-      docker compose exec todo todo client complete --id 1
+      docker compose exec todo todo client complete --id 1 --token=test_auth
    ```
 
 2. **Endpoints**:

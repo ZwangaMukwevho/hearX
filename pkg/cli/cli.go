@@ -11,6 +11,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
+	"hearx/pkg/auth"
 	"hearx/pkg/server"
 	pb "hearx/proto"
 )
@@ -27,6 +28,9 @@ var (
 	// Client flags
 	ClientHost string
 	ClientPort string
+
+	// Auth flags
+	Token string
 )
 
 func Execute() error {
@@ -58,7 +62,7 @@ func serverCmd() *cobra.Command {
 			os.Setenv("MYSQL_PASSWORD", FlagMySQLPass)
 			os.Setenv("MYSQL_DATABASE", FlagMySQLDB)
 
-			// this will block until the process is terminated
+			// now run the Fx-based server (blocks)
 			server.Run()
 			return nil
 		},
@@ -87,6 +91,7 @@ func clientCmd() *cobra.Command {
 	// client flags apply to all subcommands
 	cmd.PersistentFlags().StringVar(&ClientHost, "host", "localhost", "gRPC server host")
 	cmd.PersistentFlags().StringVar(&ClientPort, "port", "50051", "gRPC server port")
+	cmd.PersistentFlags().StringVar(&Token, "token", "", "Bearer token for auth")
 
 	// add the actions
 	cmd.AddCommand(addCmd())
@@ -186,13 +191,18 @@ func completeCmd() *cobra.Command {
 	return cmd
 }
 
-// dial creates a gRPC connection to Host:Port.
 func dial() (*grpc.ClientConn, error) {
 	addr := fmt.Sprintf("%s:%s", ClientHost, ClientPort)
-	return grpc.Dial(
-		addr,
+
+	opts := []grpc.DialOption{
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithBlock(),
-		grpc.WithTimeout(5*time.Second),
-	)
+		grpc.WithTimeout(5 * time.Second),
+	}
+	if Token != "" {
+		opts = append(opts,
+			grpc.WithPerRPCCredentials(auth.StaticTokenCreds{Token: Token}),
+		)
+	}
+	return grpc.Dial(addr, opts...)
 }

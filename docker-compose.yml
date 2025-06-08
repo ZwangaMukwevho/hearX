@@ -22,20 +22,17 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      target: runtime        # make sure you’re using the final stage
+      target: runtime      
     env_file:
       - .env
     depends_on:
       mysql:
         condition: service_healthy
     ports:
-      - "50051:50051"   # gRPC
-      - "8000:8000"     # HTTP (when you enable the gateway)
+      - "50051:50051" 
+      - "8000:8000" 
     networks:
       - backend_network
-    # no command or entrypoint override here–it inherits:
-    # ENTRYPOINT ["tail", "-f", "/dev/null"]
-    # from your Dockerfile’s runtime stage
 
 networks:
   backend_network:

@@ -11,6 +11,7 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 
+	"hearx/pkg/auth"
 	"hearx/pkg/logger"
 	"hearx/pkg/repository"
 	"hearx/pkg/service"
@@ -47,7 +48,11 @@ func provideMySQLDSN() string {
 	)
 }
 
-func newGRPCServer() *grpc.Server { return grpc.NewServer() }
+func newGRPCServer() *grpc.Server {
+	return grpc.NewServer(
+		grpc.UnaryInterceptor(auth.UnaryServerInterceptor()),
+	)
+}
 func newListener() (net.Listener, error) {
 	p := os.Getenv("GRPC_PORT")
 	if p == "" {
