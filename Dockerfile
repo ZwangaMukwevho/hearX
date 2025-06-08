@@ -5,12 +5,21 @@ RUN apk add --no-cache git
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-# build the Cobra-based CLI (which also has `serve`)
-RUN CGO_ENABLED=0 GOOS=linux go build -o todo main.go
 
-# ─── Stage 2: Final ──────────────────────────────────────────
-FROM scratch
-COPY --from=builder /src/todo /todo
-EXPOSE 50051 8000
-ENTRYPOINT ["/todo"]
-CMD ["serve"]
+# Build your single cobra binary
+RUN CGO_ENABLED=0 GOOS=linux go build -o /todo main.go
+
+# ─── Stage 2: Runtime ───────────────────────────────────────
+FROM alpine:3.18 AS runtime
+
+# install a tiny shell + utils so we can keep container alive
+RUN apk add --no-cache bash coreutils
+
+# Copy your CLI binary
+COPY --from=builder /todo /usr/local/bin/todo
+
+# keep the container alive
+ENTRYPOINT ["tail", "-f", "/dev/null"]
+
+# no default command!
+CMD []

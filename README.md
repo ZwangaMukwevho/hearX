@@ -64,6 +64,35 @@ The application uses **Docker** for containerization, **MySQL** as the database,
      docker-compose up --build
      ```
 
+   - To set the env:
+   ```bash
+      set -o allexport
+      source .env
+      set +o allexport
+   ```
+
+   - To run the server:
+   ```bash
+      docker compose exec todo todo server \
+      --grpc-port 50051 \
+      --mysql-host mysql \
+      --mysql-port 3306 \
+      --mysql-user "$MYSQL_USER" \
+      --mysql-pass "$MYSQL_PASSWORD" \
+      --mysql-db   "$MYSQL_DATABASE"
+   ```
+
+   - To run exec:
+   ```bash
+      docker compose exec todo todo client add --title "Buy eggs" --desc "Cart"
+
+      # List all tasks
+      docker compose exec todo todo client get
+
+      # Mark task #1 complete
+      docker compose exec todo todo client complete --id 1
+   ```
+
 2. **Endpoints**:
    - The application exposes several API endpoints to manage projects and tasks:
      - `GET /projects`: Retrieves all projects.
