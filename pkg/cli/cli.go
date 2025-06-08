@@ -4,14 +4,16 @@ package cli
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
+	"hearx/pkg/logger"
 	"hearx/pkg/server"
-	pb "hearx/proto"
+	pb "hearx/proto/todo"
 )
 
 var (
@@ -19,35 +21,52 @@ var (
 	Port string
 )
 
-// ServeCmd starts your gRPC server via Fx
-func ServeCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:           "serve",
-		Short:         "Run gRPC server",
-		SilenceUsage:  true,
-		SilenceErrors: true,
+func Execute() error {
+	root := &cobra.Command{
+		Use:   "todo",
+		Short: "Todo CLI (serve + client)",
+	}
+
+	// global flags for client
+	root.PersistentFlags().StringVar(&Host, "host", "localhost", "gRPC host")
+	root.PersistentFlags().StringVar(&Port, "port", "50051", "gRPC port")
+
+	root.AddCommand(
+		serveCmd(),
+		addCmd(),
+		getCmd(),
+		completeCmd(),
+	)
+	return root.Execute()
+}
+
+func serveCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "serve",
+		Short: "Start both gRPC & HTTP-Gateway",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// blocks until shutdown
+			// We initialize a logger so we can see startup logs in the CLI
+			log, err := logger.NewLogger()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "logger init failed: %v\n", err)
+				return err
+			}
+			defer log.Sync()
+			log.Info("serve command invoked")
+
 			server.Run()
 			return nil
 		},
 	}
-	return cmd
 }
 
-// AddCmd calls the AddTask RPC
-func AddCmd() *cobra.Command {
+func addCmd() *cobra.Command {
 	var title, desc string
 	cmd := &cobra.Command{
 		Use:   "add",
 		Short: "Add a new task",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			conn, err := grpc.Dial(
-				fmt.Sprintf("%s:%s", Host, Port),
-				grpc.WithTransportCredentials(insecure.NewCredentials()),
-				grpc.WithBlock(),
-				grpc.WithTimeout(5*time.Second),
-			)
+			conn, err := dial()
 			if err != nil {
 				return err
 			}
@@ -67,24 +86,18 @@ func AddCmd() *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&title, "title", "", "Task title")
+	cmd.Flags().StringVar(&title, "title", "", "Task title (required)")
 	cmd.MarkFlagRequired("title")
 	cmd.Flags().StringVar(&desc, "desc", "", "Task description")
 	return cmd
 }
 
-// GetCmd calls the ListTasks RPC
-func GetCmd() *cobra.Command {
+func getCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "get",
 		Short: "List all tasks",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			conn, err := grpc.Dial(
-				fmt.Sprintf("%s:%s", Host, Port),
-				grpc.WithTransportCredentials(insecure.NewCredentials()),
-				grpc.WithBlock(),
-				grpc.WithTimeout(5*time.Second),
-			)
+			conn, err := dial()
 			if err != nil {
 				return err
 			}
@@ -106,19 +119,13 @@ func GetCmd() *cobra.Command {
 	}
 }
 
-// CompleteCmd calls the CompleteTask RPC
-func CompleteCmd() *cobra.Command {
+func completeCmd() *cobra.Command {
 	var id int64
 	cmd := &cobra.Command{
 		Use:   "complete",
 		Short: "Mark a task complete",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			conn, err := grpc.Dial(
-				fmt.Sprintf("%s:%s", Host, Port),
-				grpc.WithTransportCredentials(insecure.NewCredentials()),
-				grpc.WithBlock(),
-				grpc.WithTimeout(5*time.Second),
-			)
+			conn, err := dial()
 			if err != nil {
 				return err
 			}
@@ -128,14 +135,25 @@ func CompleteCmd() *cobra.Command {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 
-			if _, err := client.CompleteTask(ctx, &pb.CompleteTaskRequest{Id: id}); err != nil {
+			_, err = client.CompleteTask(ctx, &pb.CompleteTaskRequest{Id: id})
+			if err != nil {
 				return err
 			}
 			fmt.Printf("Task %d marked complete\n", id)
 			return nil
 		},
 	}
-	cmd.Flags().Int64Var(&id, "id", 0, "Task ID")
+	cmd.Flags().Int64Var(&id, "id", 0, "ID of the task to complete (required)")
 	cmd.MarkFlagRequired("id")
 	return cmd
+}
+
+func dial() (*grpc.ClientConn, error) {
+	addr := fmt.Sprintf("%s:%s", Host, Port)
+	return grpc.Dial(
+		addr,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithBlock(),
+		grpc.WithTimeout(5*time.Second),
+	)
 }

@@ -1,0 +1,34 @@
+syntax = "proto3";
+package todo;
+
+import "google/api/annotations.proto";
+
+option go_package = "hearx/proto/todo;todo";
+
+service TodoService {
+  rpc AddTask   (AddTaskRequest)   returns (AddTaskResponse) {
+    option (google.api.http) = {
+      post:   "/v1/tasks"
+      body:   "task"
+    };
+  }
+  rpc ListTasks(ListTasksRequest)  returns (ListTasksResponse) {
+    option (google.api.http) = {
+      get:    "/v1/tasks"
+    };
+  }
+  rpc CompleteTask(CompleteTaskRequest) returns (CompleteTaskResponse) {
+    option (google.api.http) = {
+      put:    "/v1/tasks/{id}/complete"
+      body:   "*"
+    };
+  }
+}
+
+message Task   { int64 id = 1; string title = 2; string description = 3; bool completed = 4; }
+message AddTaskRequest   { Task task = 1; }
+message AddTaskResponse  { Task task = 1; }
+message ListTasksRequest {}
+message ListTasksResponse { repeated Task tasks = 1; }
+message CompleteTaskRequest  { int64 id = 1; }
+message CompleteTaskResponse { Task task = 1; }

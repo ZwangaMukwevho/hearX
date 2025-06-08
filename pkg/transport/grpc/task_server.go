@@ -5,7 +5,7 @@ import (
 
 	"hearx/pkg/model"
 	"hearx/pkg/service"
-	pb "hearx/proto"
+	pb "hearx/proto/todo"
 )
 
 // TaskServer implements the gRPC TodoService.

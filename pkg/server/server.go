@@ -16,26 +16,54 @@ import (
 	"hearx/pkg/service"
 	"hearx/pkg/storage"
 	grpcTransport "hearx/pkg/transport/grpc"
-	pb "hearx/proto"
+	pb "hearx/proto/todo"
 )
 
+// Run boots both gRPC and HTTP-Gateway in one process.
 func Run() {
 	app := fx.New(
 		fx.Provide(
+			// common
 			logger.NewLogger,
 			provideMySQLDSN,
 			storage.NewMySQLConn,
 			repository.NewTaskRepository,
 			service.NewTaskService,
+
+			// --- gRPC server providers ---
 			grpcTransport.NewTaskServer,
 			newGRPCServer,
-			newListener,
+			fx.Annotate(
+				newGRPCListener,
+				fx.ResultTags(`name:"grpcListener"`),
+			),
+
+			// --- HTTP-Gateway providers ---
+			NewGatewayMux,
+			fx.Annotate(
+				NewGatewayListener,
+				fx.ResultTags(`name:"httpListener"`),
+			),
 		),
-		fx.Invoke(register, start),
+		fx.Invoke(
+			// start gRPC
+			registerGRPC,
+			fx.Annotate(
+				startGRPC,
+				fx.ParamTags(``, ``, `name:"grpcListener"`, ``),
+			),
+
+			// start HTTP-Gateway
+			fx.Annotate(
+				startGateway,
+				fx.ParamTags(``, ``, `name:"httpListener"`, ``),
+			),
+		),
 	)
 	app.Run()
 }
 
+// build DSN from env
 func provideMySQLDSN() string {
 	host := os.Getenv("MYSQL_HOST")
 	port := os.Getenv("MYSQL_PORT")
@@ -47,8 +75,13 @@ func provideMySQLDSN() string {
 	)
 }
 
-func newGRPCServer() *grpc.Server { return grpc.NewServer() }
-func newListener() (net.Listener, error) {
+// ─── gRPC setup ────────────────────────────────────────────────
+
+func newGRPCServer() *grpc.Server {
+	return grpc.NewServer()
+}
+
+func newGRPCListener() (net.Listener, error) {
 	p := os.Getenv("GRPC_PORT")
 	if p == "" {
 		p = "50051"
@@ -56,21 +89,23 @@ func newListener() (net.Listener, error) {
 	return net.Listen("tcp", ":"+p)
 }
 
-func register(server *grpc.Server, ts *grpcTransport.TaskServer) {
-	pb.RegisterTodoServiceServer(server, ts)
+func registerGRPC(s *grpc.Server, ts *grpcTransport.TaskServer) {
+	pb.RegisterTodoServiceServer(s, ts)
 }
 
-func start(lc fx.Lifecycle, server *grpc.Server, lis net.Listener, log *zap.Logger) {
+func startGRPC(lc fx.Lifecycle, s *grpc.Server, lis net.Listener, log *zap.Logger) {
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			log.Info("gRPC starting", zap.String("addr", lis.Addr().String()))
-			go server.Serve(lis)
+			go s.Serve(lis)
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {
 			log.Info("gRPC stopping")
-			server.GracefulStop()
+			s.GracefulStop()
 			return nil
 		},
 	})
 }
+
+// ─── HTTP-Gateway setup ────────────────────────────────────────

@@ -4,9 +4,11 @@ go 1.23.4
 
 require (
 	github.com/go-sql-driver/mysql v1.9.2
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.26.3
 	github.com/spf13/cobra v1.9.1
 	go.uber.org/fx v1.24.0
 	go.uber.org/zap v1.27.0
+	google.golang.org/genproto/googleapis/api v0.0.0-20250324211829-b45e905df463
 	google.golang.org/grpc v1.73.0
 	google.golang.org/protobuf v1.36.6
 )
